@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:4.4
+    container_name: files_manager_mongo
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  redis:
+    image: redis:6-alpine
+    container_name: files_manager_redis
+    restart: always
+    ports:
+      - "6379:6379"
+
+  app:
+    build: .
+    container_name: files_manager_app
+    restart: always
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - DB_HOST=mongodb
+      - DB_PORT=27017
+      - DB_DATABASE=files_manager
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - FOLDER_PATH=/tmp/files_manager
+    depends_on:
+      - mongodb
+      - redis
+    volumes:
+      - ./:/app
+      - files_data:/tmp/files_manager
+    command: npm run start-server
+
+  worker:
+    build: .
+    container_name: files_manager_worker
+    restart: always
+    environment:
+      - DB_HOST=mongodb
+      - DB_PORT=27017
+      - DB_DATABASE=files_manager
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - FOLDER_PATH=/tmp/files_manager
+    depends_on:
+      - mongodb
+      - redis
+      - app
+    volumes:
+      - ./:/app
+      - files_data:/tmp/files_manager
+    command: npm run start-worker
+
+volumes:
+  mongo_data:
+  files_data:
